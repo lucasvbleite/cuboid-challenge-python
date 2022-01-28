@@ -163,7 +163,7 @@ class TestCuboidUpdate:
         return [bag, cuboid]
 
     @staticmethod
-    def test_should_update_cuboid(session):
+    def test_should_update_cuboid(test_client, session):
         # pylint: disable=unused-variable
         bag, cuboid = TestCuboidUpdate._before_each(session)
 
@@ -173,12 +173,23 @@ class TestCuboidUpdate:
         new_height = 5
         new_depth = 5
 
-        response = []
+        url = f"/cuboids/{cuboid.id}/update"
+
+        response = test_client.patch(
+            url,
+            data=json.dumps({"width": new_width, "height": new_height, "depth": new_depth}),
+            content_type="application/json",
+        )
+
+        res = response.get_json()
 
         assert response.status_code == HTTPStatus.OK
+        assert res["width"] == new_width
+        assert res["height"] == new_height
+        assert res["depth"] == new_depth
 
     @staticmethod
-    def test_should_fail_if_insufficient_capacity(session):
+    def test_should_fail_if_insufficient_capacity(test_client, session):
         # pylint: disable=unused-variable
         bag, cuboid = TestCuboidUpdate._before_each(session)
 
@@ -188,13 +199,30 @@ class TestCuboidUpdate:
         new_height = 6
         new_depth = 6
 
-        response = []
+        response = test_client.patch(
+            f"/cuboids/{cuboid.id}/update",
+            data=json.dumps({"width": new_width, "height": new_height, "depth": new_depth}),
+            content_type="application/json",
+        )
 
+        res = response.get_json()
+        assert res["message"] == "Insufficient capacity in bag"
         assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
     @staticmethod
-    def test_should_return_not_found_if_cuboid_doesnt_exists():
-        response = []
+    def test_should_return_not_found_if_cuboid_doesnt_exists(test_client):
+        new_width = 6
+        new_height = 6
+        new_depth = 6
+
+        response = test_client.patch(
+            "/cuboids/0/update",
+            data=json.dumps({"width": new_width, "height": new_height, "depth": new_depth}),
+            content_type="application/json",
+        )
+
+        res = response.get_json()
+        assert res["message"] == "Cuboid not found"
         assert response.status_code == HTTPStatus.NOT_FOUND
 
 
@@ -212,11 +240,25 @@ class TestCuboidDelete:
         return cuboid
 
     @staticmethod
-    def test_should_delete_the_cuboid():
-        response = []
+    def test_should_delete_the_cuboid(test_client, session):
+        cuboid = TestCuboidDelete._before_each(session)
+
+        response = test_client.delete(
+            f"/cuboids/{cuboid.id}/delete",
+            content_type="application/json",
+        )
+
+        res = response.get_json()
+        assert res["message"] == "Cuboid deleted"
         assert response.status_code == HTTPStatus.OK
 
     @staticmethod
-    def test_should_return_not_found_if_cuboid_doesnt_exists():
-        response = []
+    def test_should_return_not_found_if_cuboid_doesnt_exists(test_client):
+        response = test_client.delete(
+            "/cuboids/0/delete",
+            content_type="application/json",
+        )
+
+        res = response.get_json()
+        assert res["message"] == "Cuboid not found"
         assert response.status_code == HTTPStatus.NOT_FOUND
