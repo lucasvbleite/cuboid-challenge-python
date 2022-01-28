@@ -21,7 +21,9 @@ def get_cuboid(cuboid_id):
     cuboid_schema = CuboidSchema()
     cuboid = Cuboid.query.get(cuboid_id)
 
-    return jsonify(cuboid_schema.dump(cuboid)), HTTPStatus.OK
+    if cuboid:
+        return jsonify(cuboid_schema.dump(cuboid)), HTTPStatus.OK
+    return jsonify(message="Cuboid not found"), HTTPStatus.NOT_FOUND
 
 
 @cuboid_api.route("/", methods=["POST"])
