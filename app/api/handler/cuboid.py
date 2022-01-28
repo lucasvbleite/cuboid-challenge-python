@@ -69,8 +69,21 @@ def update_cuboid(cuboid_id):
                                  height=content["height"])
             return jsonify(cuboid_schema.dump(cuboid)), HTTPStatus.OK
 
-        cuboid.message = "Insufficient capacity in bag"
-        return jsonify(cuboid_schema.dump(cuboid)), HTTPStatus.UNPROCESSABLE_ENTITY
+        message = "Insufficient capacity in bag"
+        return jsonify(message=message), HTTPStatus.UNPROCESSABLE_ENTITY
+
+    message = "Cuboid not found"
+    return jsonify(message=message), HTTPStatus.NOT_FOUND
+
+
+@cuboid_api.route('<int:cuboid_id>/delete', methods=["DELETE"])
+def delete_cuboid(cuboid_id):
+    cuboid = Cuboid.query.get(cuboid_id)
+    if cuboid:
+        db.session.delete(cuboid)
+        db.session.commit()
+        message = "Cuboid deleted"
+        return jsonify(message=message), HTTPStatus.OK
 
     message = "Cuboid not found"
     return jsonify(message=message), HTTPStatus.NOT_FOUND
