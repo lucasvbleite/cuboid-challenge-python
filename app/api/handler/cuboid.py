@@ -1,5 +1,7 @@
 from http import HTTPStatus
 from flask import Blueprint, jsonify, request
+
+from app.api.model.bag import Bag
 from app.api.model.cuboid import Cuboid
 from app.api.schema.cuboid import CuboidSchema
 from app.api.db import db
@@ -37,7 +39,38 @@ def create_cuboid():
         depth=content["depth"],
         bag_id=content["bag_id"],
     )
-    db.session.add(cuboid)
-    db.session.commit()
 
-    return jsonify(cuboid_schema.dump(cuboid)), HTTPStatus.CREATED
+    bag = Bag.query.get(content["bag_id"])
+
+    if bag:
+        cuboid = cuboid.create_cuboid(bag.available_volume)
+        if cuboid:
+            return jsonify(cuboid_schema.dump(cuboid)), HTTPStatus.CREATED
+        message = "Insufficient capacity in bag"
+        return jsonify(message=message), HTTPStatus.UNPROCESSABLE_ENTITY
+    cuboid.message = f"Bag id {content['bag_id']} not found"
+    return jsonify(cuboid_schema.dump(cuboid)), HTTPStatus.NOT_FOUND
+
+
+@cuboid_api.route('/<int:cuboid_id>/update', methods=['PATCH'])
+def update_cuboid(cuboid_id):
+    cuboid_schema = CuboidSchema()
+    content = request.json
+
+    cuboid = Cuboid.query.get(cuboid_id)
+    if cuboid:
+        bag = Bag.query.get(cuboid.bag_id)
+        new_cuboid_volume = content["width"] * content["depth"] * content["height"]
+        new_bag_available_volume = bag.available_volume + cuboid.volume
+
+        if new_cuboid_volume <= new_bag_available_volume:
+            cuboid.update_cuboid(width=content["width"],
+                                 depth=content["depth"],
+                                 height=content["height"])
+            return jsonify(cuboid_schema.dump(cuboid)), HTTPStatus.OK
+
+        cuboid.message = "Insufficient capacity in bag"
+        return jsonify(cuboid_schema.dump(cuboid)), HTTPStatus.UNPROCESSABLE_ENTITY
+
+    message = "Cuboid not found"
+    return jsonify(message=message), HTTPStatus.NOT_FOUND
